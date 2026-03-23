@@ -4,18 +4,19 @@
 This project implements a pipeline to ingest and transform BI data from Tableau dashboards.
 The goal is providing visibility of dashboard usage, freshness, and reliability by transforming raw metadata into an analytics dataset.
 The solution uses Python for data ingestion and Databricks (PySpark + Delta Lake) for data processing and storage.
+Data are extracted using the Tableau REST API via a Python script that handles authentication, data extraction, transformation, and loading.
 
 # Part 1 - Architecture
-- The pipeline follows medallion architecture with a bronze layer (raw metadata ingested from API and stored in a DLT) and a silver layer (cleanded and structured dataset with renamed fields) and it is structured as follow:
+- The pipeline follows medallion architecture with a bronze layer (raw metadata ingested from API and stored in a Delta table) and a silver layer (cleaned and structured dataset with renamed fields) and it is structured as follow:
   1.  Authenticate with Tableau API
   2.  Fetch dashboards metadata
   3.  Store raw data in Bronze table
   4.  Transform data into Silver layer
   5.  Update into final Delta table using MERGE
-- The pipeline can be scheduled as a job in dbt with a specific frequency (daily is reccomended).
+- The pipeline can be Databricks Secrets or environment variables with a specific frequency (daily is recomended).
 - There aren't sensitive information stored in production and credentials could be stored safely in dbt Secrets. 
 - There are these precautions to manage failures: raise_for_status() in the API call, try/except logic in the pipeline, job logs that indicates errors.
-- Data are stored using Delta Lake with MERGE for data updates, the tables created are: bi_metadata.bronze_dashboards (for raw data) and bi_metadata.dashboards (for the clean dataset). The MERGE action on a PK ensures also the idempotecy.
+- Data are stored using Delta Lake with MERGE for data updates, the tables created are: bi_metadata.bronze_dashboards (for raw data) and bi_metadata.dashboards (for the clean dataset). The MERGE action on a PK ensures also the idempotency.
 - Data Transformations (silver layer) is implemented in PySpark and includes: column renaming, Flattening nested fields
 and calculated fields (status and last_synced_at).
 
@@ -51,10 +52,10 @@ To monitor BI health and usage, I would be included the following metrics:
 1. Active dashboards (%) in the last 60 days --> The KPI measures the % of dashboards used at least once in the last 60 days.
 2. Outdated dashboards in the last 180 days --> The KPI measures the number of dashboards unused in the last 180 days, 
 these are the dashboards that could be put on a decommissioning list.
-3. Top Dashboards by Usage --> Top 10 most udes dashboards, these are the most important dashboards for the business and those for which maintenance will be a priority.
-4. Failed Refresh Count --> The KPI mesures the number of dashboard with failed refresh, it helps to measures data reliability and to identifies pipeline issues. It could be helpful also the detailed list of failes refresh dashboards
+3. Top Dashboards by Usage --> Top 10 most used dashboards, these are the most important dashboards for the business and those for which maintenance will be a priority.
+4. Failed Refresh Count --> The KPI measures the number of dashboard with failed refresh, it helps to measures data reliability and to identifies pipeline issues. It could be helpful also the detailed list of failes refresh dashboards
 5. Usage by Owner or Team --> Aggregate usage by owner or team, in order to identify the top and worse users or groups
 Identifies pipeline issues.
-6. Unique Users (per dashboard) --> The KPI count the number of unique users for a dashbord in order to measure the dashboard adoption
+6. Unique Users (per dashboard) --> The KPI count the number of unique users for a dashboard in order to measure the dashboard adoption
 
 
